@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+
+require 'open-uri'
+require 'nokogiri'
+require 'date'
+
+class WordsOfTheDays
+  attr_writer :num_days
+  attr_reader :entries
+  def self.showdate day
+    day.to_s.gsub('-', '/')
+  end
+
+  def initialize
+    @entries = []
+    @today = Date.today
+    @num_days = 10
+  end
+
+  def get_entries
+    @today.downto(@today - @num_days).each do |d|
+      doc = Nokogiri::HTML(open("http://www.merriam-webster.com/word-of-the-day/" + self.class.showdate(d)))
+      word = doc.css("div .wod_headword").text.gsub('"', '')
+      entry = { word: word, definitions: [] }
+      defs = doc.css("div .d")
+      defs.each do |df|
+        scnt = df.css("div .scnt")
+        scnt.css(".ssens").each do |s|
+          entry[:definitions] << s.text
+        end
+      end
+      entry[:definitions].map! do |df|
+        df.gsub(/^[ a-z]*: /, '')
+      end
+      #p entry
+      @entries << entry
+    end
+    @entries
+  end
+
+  def pp
+    @entries.each do |e|
+      defs = e[:definitions].map do |d|
+        "<p>" + d + "</p>"
+      end
+      puts e[:word] + ";" + defs.join
+    end
+  end
+end
+
+scraper = WordsOfTheDays.new
+scraper.num_days = 5
+scraper.get_entries
+scraper.pp
